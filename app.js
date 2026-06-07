@@ -1,4 +1,9 @@
 const BASE_URL = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies";
+const FALLBACK_RATES = {
+  usd: {
+    inr: 94.95
+  }
+};
 
 // Select elements
 const themeToggle = document.getElementById("theme-toggle");
@@ -30,8 +35,8 @@ let activeDropdown = null;
 
 // Currency symbols helper
 const currencySymbols = {
-  USD: "$", EUR: "€", GBP: "£", JPY: "¥", INR: "₹", CAD: "C$", AUD: "A$",
-  CNY: "¥", RUB: "₽", BRL: "R$", SGD: "S$", HKD: "HK$", CHF: "CHF"
+  USD: "$", EUR: "\u20ac", GBP: "\u00a3", JPY: "\u00a5", INR: "\u20b9", CAD: "C$", AUD: "A$",
+  CNY: "\u00a5", RUB: "\u20bd", BRL: "R$", SGD: "S$", HKD: "HK$", CHF: "CHF"
 };
 
 // Initialize Theme
@@ -334,6 +339,8 @@ const fetchRates = async (baseCurrency) => {
   const URL = `${BASE_URL}/${lowerBase}.json`;
   const response = await fetch(URL);
   if (!response.ok) {
+    const fallbackRates = FALLBACK_RATES[lowerBase];
+    if (fallbackRates) return fallbackRates;
     throw new Error(`Failed to fetch exchange rates for ${baseCurrency}`);
   }
   const data = await response.json();
@@ -353,8 +360,10 @@ const renderPopularConversions = (base, amount, rates) => {
   conversionsGrid.innerHTML = "";
   const popular = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "INR"];
   
-  // Select up to 4 popular currencies, skipping current base
-  const targets = popular.filter(curr => curr !== base).slice(0, 4);
+  // Select up to 4 popular currencies that are available in the current rate set.
+  const targets = popular
+    .filter(curr => curr !== base && rates[curr.toLowerCase()])
+    .slice(0, 4);
   
   targets.forEach(target => {
     const rate = rates[target.toLowerCase()];
@@ -419,6 +428,21 @@ const updateExchangeRate = async () => {
     renderPopularConversions(fromVal, amtVal, rates);
   } catch (error) {
     console.error(error);
+    const fallbackRates = FALLBACK_RATES[fromVal.toLowerCase()];
+    const fallbackRate = fallbackRates?.[toVal.toLowerCase()];
+
+    if (fallbackRate) {
+      const finalAmount = (amtVal * fallbackRate).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4
+      });
+
+      msg.innerText = `${amtVal.toLocaleString()} ${fromVal} = ${finalAmount} ${toVal}`;
+      updateTime.innerText = "Showing saved fallback rate. Live rates update automatically when online.";
+      renderPopularConversions(fromVal, amtVal, fallbackRates);
+      return;
+    }
+
     showToast("Failed to fetch exchange rates. Try checking your internet connection.");
     msg.innerText = "Fetch failed";
     
