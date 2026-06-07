@@ -173,7 +173,7 @@ const setupDropdownEvents = (type, selectedBox, listWrapper, nativeSelect) => {
     let visibleCount = 0;
     
     items.forEach(item => {
-      const code = item.getAttribute("data-value");
+      const code = item.getAttribute(" data-value ");
       if (code.includes(filter)) {
         item.style.display = "flex";
         visibleCount++;
